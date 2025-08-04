@@ -1,68 +1,80 @@
 # Softmax-on-Ara-RVV
 
-## 📌 Summary
-> **This project benchmarks a vectorized softmax implementation on the Ara platform (CVA6 + RVV), using custom RVV intrinsics and Spike simulation to evaluate acceleration benefits over scalar RISC-V execution.**
+## 📌Summary
+> This project evaluates the acceleration of softmax using RVV vector intrinsics. The result shows up to 99% execution time can be reduced by replacing glibc’s scalar expf() with a Taylor-approximated SIMD version.
 
 ## Motivation
-While implementing MobileBERT on RISC-V cores, softmax became a performance bottleneck due to its reliance on `exp(x)` and vector reductions.  
-This project explores how the Ara platform, equipped with a RISC-V Vector Extension (RVV 1.0) coprocessor, can accelerate softmax via data-level parallelism.
-
-I wrote a standalone RVV-based softmax kernel and integrated it into Ara’s `apps/` folder to:
-- Simulate it using Ara’s Spike backend
-- Measure execution cycles via `mcycle`
-- Compare it against scalar (RV32IM) and software-optimized versions
+While porting MobileBERT to RISC-V, we identified softmax as a key bottleneck due to:
+- Heavy reliance on exp(x) and reduction ops
+- Lack of glibc support for vectorized math
+This project investigates how vector intrinsics can enable nonlinear acceleration via RVV, and evaluates the trade-off between accuracy and execution time.
 
 ## Evaluation Method
-This experiment was conducted by:
-- Writing RVV softmax code using intrinsics (`vsetvl`, `vle32.v`, `vfadd.vv`, etc.)
-- Building and running it with Ara’s Spike setup
-- Recording `mcycle` count for different input sizes and VLEN settings
+Implemented scalar and RVV-based softmax variants:
+ - softmax scalar, glibc expf() (baseline)
+ - softmax Taylor order-3, no RVV
+ - softmax Taylor order-3, RVV
 
-The measurement includes:
-- Instruction-level simulation accuracy
-- Static vector lengths with up to 8 lanes
-- Comparison with scalar softmax (RV32IM)
+### Environment
+- Platform: Ara (CVA6 + RVV 1.0)
+- Simulation tool: Verilator
 
 ## Result Summary
-(tbd)
-| Configuration         | Input Size | VLEN | Lanes | Cycles | Speedup |
-|-----------------------|------------|------|--------|--------|---------|
-| RV32IM Scalar         |            |      |        |        |         |
-| RV32IM + SW Opt (LUT) |            |      |        |        |         |
-| Ara (no RVV) Softmax  |            |      |        |        |         |
-| Ara RVV Softmax       |            |      |        |        |         |
+Used Verilator to simulate real mcycle counts.
+Settings:
+Input: 512 float32 values, range [0, 10)
+**Results**
+|Method|Cycle Count|Time Reduction|
+|------|-----------|--------------|
+|Scalar (glibc expf)|124,887|0%|
+|Taylor N=3 no RVV|14,644|88%|
+|Taylor N=3 with RVV|1,598|99%
+
+***Observations***
+- RVV brings no benefit unless the softmax kernel is rewritten using vector intrinsics
+- With a proper SIMD-friendly exp(x) approximation (e.g., Taylor expansion), RVV drastically reduces latency
+- Approximation degree can tune the speed/accuracy trade-off for deployment
 
 ## Repo Structure
-- softmax-on-ara-rvv/
-  - README.md
-  - rvv_softmax_demo/
-    - main.c               # RVV softmax kernel
-    - Makefile             # For Ara/apps usage
-    - perf_log.txt         # Spike output log
-  - docs/
-    - perf-summary.md      # Result writeup
-    - vector_strategy.md   # RVV mapping explanation
 
-## How to Use with Ara
-This repo is designed to plug into the official Ara repository.  
-To test the demo:
+- Softmax-on-Ara-RVV/
+  - softmax/
+    - main.c
+    - Makefile
+    - kernel/             # softmax.c / softmax.h
+    - script/             # gen_data.py / plot_data.py
+  -  docs/
+    - full_report.md
+    - RVV_beginner_note.md
+  - README.md
+
+## How to Use with Ara (CVA6 + RVV)
+1. Clone the Ara repo with submodules:
 ```bash
-# Clone Ara with submodules
 git clone --recursive https://github.com/pulp-platform/ara.git
-cd ara
-# Copy demo into apps/
-cp -r ../softmax-on-ara-rvv/rvv_softmax_demo apps/
-# Build and simulate
-cd apps
-make bin/rvv_softmax_demo.spike
-make spike-run-rvv_softmax_demo
 ```
 
-## Next Steps
-- Evaluate performance across different VLEN and lane settings
-- Try Ideal Dispatcher mode for theoretical peak throughput
-- Expand to vectorized GELU, tanh, or layer norm kernels
-- Integrate result into overall MobileBERT pipeline
+2. Copy this project’s softmax/ folder into apps/:
+```bash
+cd ara
+cp -r ../Softmax-on-Ara-RVV/softmax apps/
+```
+3. Build and run with Verilator:
+```
+cd apps
+make bin/softmax
+cd hardware
+make sim app=softmax
+```
+
+## Future Work
+- Benchmark with other VLEN/LMUL/AVL configurations
+- Add support for GELU, tanh, and layer norm kernels
+- Integrate softmax into full MobileBERT workload
+- Evaluate error impact from Taylor approximation vs expf()
 
 ## Reference
-- [ara platform](https://github.com/pulp-platform/ara)
+- [ara platform repo](https://github.com/pulp-platform/ara)
+- [LLVM RVV Intrinsics Guide](doc/RVV_beginner_note.md)
+
+
