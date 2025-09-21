@@ -57,7 +57,7 @@ git clone --recursive https://github.com/pulp-platform/ara.git
 2. Copy this project’s softmax/ folder into apps/:
 ```bash
 cd ara
-cp -r ../Softmax-on-Ara-RVV/softmax apps/
+cp -r ../Softmax-on-Ara-RVV/softmax ara/apps
 ```
 3. Build and run with Verilator:
 ```
