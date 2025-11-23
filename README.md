@@ -1,7 +1,7 @@
 # Softmax-on-Ara-RVV
 
 ## 📌Summary
-> This project evaluates the acceleration of softmax using RVV vector intrinsics. The result shows up to 99% execution time can be reduced by replacing glibc’s scalar expf() with a Taylor-approximated SIMD version.
+> This project evaluates the acceleration of softmax using RVV vector intrinsics. The result shows up to 99% cycle counts can be reduced by replacing glibc’s scalar expf() with a Taylor-approximated SIMD version.
 
 ## Motivation
 While porting MobileBERT to RISC-V, we identified softmax as a key bottleneck due to:
