@@ -17,6 +17,7 @@ Implemented scalar and RVV-based softmax variants:
 
 ### Environment
 - Platform: Ara (CVA6 + RVV 1.0)
+  - Ara is an open-source RISC-V vector coprocessor for the CVA6 core, implementing RVV 1.0 and widely used for research on vector architectures.
 - Simulation tool: Verilator
 
 ## Result Summary
