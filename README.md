@@ -76,6 +76,6 @@ make sim app=softmax
 
 ## Reference
 - [ara platform repo](https://github.com/pulp-platform/ara)
-- [LLVM RVV Intrinsics Guide](doc/RVV_beginner_note.md)
+- [LLVM RVV Intrinsics Guide](docs/RVV_beginner_note.md)
 
 
