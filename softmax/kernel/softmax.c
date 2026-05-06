@@ -13,6 +13,13 @@
 #define MAX_AVL 128
 
 //#define DEBUG
+inline float expth (float x) {
+	// Taylor expansion for N = 3
+	float sum = x*T3 + T2;
+	sum = x*sum + T1;
+	sum = x*sum + 1;
+	return sum;
+}
 
 // RVV Taylor expansion N=3
 void softmax_vec3(float* in, float* out, float* buf, int N) {
@@ -32,40 +39,40 @@ void softmax_vec3(float* in, float* out, float* buf, int N) {
     int tra_size = .0f;
 
     // set Taylor series settings, make then constant vector
-    vfloat32m1_t zero_v = vfmv_v_f_f32m1(.0f, vl);
-    vfloat32m1_t one_v = vfmv_v_f_f32m1(1.0f, vl); // T0 and T1 = vec of 1.0 
-    vfloat32m1_t T2_v = vfmv_v_f_f32m1(T2, vl); 
-    vfloat32m1_t T3_v = vfmv_v_f_f32m1(T3, vl); 
-    vfloat32m1_t T4_v = vfmv_v_f_f32m1(T4, vl); 
-    vfloat32m1_t T5_v = vfmv_v_f_f32m1(T5, vl);
+    vfloat32m1_t zero_v = __riscv_vfmv_v_f_f32m1(.0f, vl);
+    vfloat32m1_t one_v = __riscv_vfmv_v_f_f32m1(1.0f, vl); // T0 and T1 = vec of 1.0 
+    vfloat32m1_t T2_v = __riscv_vfmv_v_f_f32m1(T2, vl);
+    vfloat32m1_t T3_v = __riscv_vfmv_v_f_f32m1(T3, vl);
+    vfloat32m1_t T4_v = __riscv_vfmv_v_f_f32m1(T4, vl);
+    vfloat32m1_t T5_v = __riscv_vfmv_v_f_f32m1(T5, vl);
 
     // Step 1, exp(x) save to buffer array
     //         , sum saved to sum_s
  
     // set vector settings
-    vl = vsetvl_e32m1(avl); //SEW=32, LMUL=1
+    vl = __riscv_vsetvl_e32m1(avl); //SEW=32, LMUL=1
 
     while(tra_size < N)
     {
         // from input array load 128 to vector register
-        num_v = vle32_v_f32m1(in_ptr, vl); // input value
-        buf_v = vle32_v_f32m1(in_ptr, vl); // sum for poly result
+        num_v = __riscv_vle32_v_f32m1(in_ptr, vl); // input value
+        buf_v = __riscv_vle32_v_f32m1(in_ptr, vl); // sum for poly result
 
         // accumulate and multiplication
         // sum = x*T3 + T2
-        buf_v = vfmadd_vv_f32m1(buf_v, T3_v, T2_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, T3_v, T2_v, vl);
         // sum = sum*x + T1 = sum*x + 1
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
         // sum = x*sum + 1 = sum*x + 1
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
 
         // store buffer array
-        vsse32_v_f32m1(buf_ptr, FP32_SIZE, buf_v, vl);
+        __riscv_vsse32_v_f32m1(buf_ptr, FP32_SIZE, buf_v, vl);
 
         // how to add up all elements and return scalar?
         // vfloat32m1_t vfredsum_vs_f32m1_f32m1(dest, vector, scalar, size)
-        sum_v = vfredusum_vs_f32m1_f32m1(sum_v, buf_v, zero_v, vl);
-        vsse32_v_f32m1(&tmp, FP32_SIZE, sum_v,1);
+        sum_v = __riscv_vfredusum_vs_f32m1_f32m1(buf_v, zero_v, vl);
+        __riscv_vsse32_v_f32m1(&tmp, FP32_SIZE, sum_v,1);
         sum_s += tmp;
 
 	#ifdef DEBUG
@@ -85,12 +92,12 @@ void softmax_vec3(float* in, float* out, float* buf, int N) {
     {
 
         // load from buffer
-        num_v = vle32_v_f32m1(buf_ptr, vl);
+        num_v = __riscv_vle32_v_f32m1(buf_ptr, vl);
 
         // devide each element
-	res_v = vfdiv_vf_f32m1(num_v, sum_s, vl);	
+	res_v = __riscv_vfdiv_vf_f32m1(num_v, sum_s, vl);	
 	// store to output
-        vsse32_v_f32m1(out_ptr, FP32_SIZE, res_v, vl);
+        __riscv_vsse32_v_f32m1(out_ptr, FP32_SIZE, res_v, vl);
 
         buf_ptr += vl;
         out_ptr += vl;
@@ -118,47 +125,47 @@ void softmax_vec5(float* in, float* out, float* buf, int N) {
     int tra_size = .0f;
 
     // set Taylor series settings, make then constant vector
-    vfloat32m1_t zero_v = vfmv_v_f_f32m1(.0f, vl);
-    vfloat32m1_t one_v = vfmv_v_f_f32m1(1.0f, vl); // T0 and T1 = vec of 1.0 
-    vfloat32m1_t T2_v = vfmv_v_f_f32m1(T2, vl); 
-    vfloat32m1_t T3_v = vfmv_v_f_f32m1(T3, vl); 
-    vfloat32m1_t T4_v = vfmv_v_f_f32m1(T4, vl); 
-    vfloat32m1_t T5_v = vfmv_v_f_f32m1(T5, vl);
+    vfloat32m1_t zero_v = __riscv_vfmv_v_f_f32m1(.0f, vl);
+    vfloat32m1_t one_v = __riscv_vfmv_v_f_f32m1(1.0f, vl); // T0 and T1 = vec of 1.0 
+    vfloat32m1_t T2_v = __riscv_vfmv_v_f_f32m1(T2, vl); 
+    vfloat32m1_t T3_v = __riscv_vfmv_v_f_f32m1(T3, vl); 
+    vfloat32m1_t T4_v = __riscv_vfmv_v_f_f32m1(T4, vl); 
+    vfloat32m1_t T5_v = __riscv_vfmv_v_f_f32m1(T5, vl);
 
     // Step 1, exp(x) save to buffer array
     //         , sum saved to sum_s
  
     // set vector settings
-    vl = vsetvl_e32m1(avl); //SEW=32, LMUL=1
+    vl = __riscv_vsetvl_e32m1(avl); //SEW=32, LMUL=1
 
     while(tra_size < N)
     {
         // from input array load 128 to vector register
-        num_v = vle32_v_f32m1(in_ptr, vl); // input value
-        buf_v = vle32_v_f32m1(in_ptr, vl); // sum for poly result
+        num_v = __riscv_vle32_v_f32m1(in_ptr, vl); // input value
+        buf_v = __riscv_vle32_v_f32m1(in_ptr, vl); // sum for poly result
 
         // accumulate and multiplication
         // sum = x*T5 + T4
-        // vfmadd_vv_f32m4()
-        // vfmadd.vv vd, vs1, vs2, vm
+        // __riscv_vfmadd_vv_f32m4()
+        // __riscv_vfmadd.vv vd, vs1, vs2, vm
         // vd = (vd*vs1) + vs2
-        buf_v = vfmadd_vv_f32m1(buf_v, T5_v, T4_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, T5_v, T4_v, vl);
         // sum = sum*x + T3
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, T3_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, T3_v, vl);
         // sum = sum*x + T2
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, T2_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, T2_v, vl);
         // sum = sum*x + T1 = sum*x + 1
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
         // sum = x*sum + 1 = sum*x + 1
-        buf_v = vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
+        buf_v = __riscv_vfmadd_vv_f32m1(buf_v, num_v, one_v, vl);
 
         // store buffer array
-        vsse32_v_f32m1(buf_ptr, FP32_SIZE, buf_v, vl);
+        __riscv_vsse32_v_f32m1(buf_ptr, FP32_SIZE, buf_v, vl);
 
         // how to add up all elements and return scalar?
         // vfloat32m1_t vfredsum_vs_f32m1_f32m1(dest, vector, scalar, size)
-        sum_v = vfredusum_vs_f32m1_f32m1(sum_v, buf_v, zero_v, vl);
-        vsse32_v_f32m1(&tmp, FP32_SIZE, sum_v,1);
+        sum_v = __riscv_vfredusum_vs_f32m1_f32m1(buf_v, zero_v, vl);
+        __riscv_vsse32_v_f32m1(&tmp, FP32_SIZE, sum_v,1);
         sum_s += tmp;
 
 	#ifdef DEBUG
@@ -178,12 +185,12 @@ void softmax_vec5(float* in, float* out, float* buf, int N) {
     {
 
         // load from buffer
-        num_v = vle32_v_f32m1(buf_ptr, vl);
+        num_v = __riscv_vle32_v_f32m1(buf_ptr, vl);
 
         // devide each element
-	res_v = vfdiv_vf_f32m1(num_v, sum_s, vl);	
+	res_v = __riscv_vfdiv_vf_f32m1(num_v, sum_s, vl);	
 	// store to output
-        vsse32_v_f32m1(out_ptr, FP32_SIZE, res_v, vl);
+        __riscv_vsse32_v_f32m1(out_ptr, FP32_SIZE, res_v, vl);
 
         buf_ptr += vl;
         out_ptr += vl;
@@ -227,11 +234,3 @@ void softmax_expth(float* in, float* out, float* buf, int N) {
     }
 }
 
-
-inline float expth (float x) {
-	// Taylor expansion for N = 3
-	float sum = x*T3 + T2;
-	sum = x*sum + T1;
-	sum = x*sum + 1;
-	return sum;
-}
