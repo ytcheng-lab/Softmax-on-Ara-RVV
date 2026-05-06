@@ -55,6 +55,10 @@ Input: 512 float32 values, range [0, 10)
 git clone --recursive https://github.com/pulp-platform/ara.git
 ```
 
+> Or use a docker environment for Ara.
+> - Docker file at [here](./docker/Dockerfile)
+> - Usage of docker: [[Tutorial] Docker Tutorial for Beginners](https://hackmd.io/E3RYghmFRJG0HlTiKBLCrQ)
+
 2. Copy this project’s softmax/ folder into apps/:
 ```bash
 cd ara
